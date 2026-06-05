@@ -1,0 +1,20 @@
+[Unit]
+Description=QQ OneBot11 AC Remote Bot
+After=network-online.target ac-remote.service
+Wants=network-online.target
+Requires=ac-remote.service
+
+[Service]
+Type=simple
+User=orangepi
+Group=orangepi
+WorkingDirectory=/home/orangepi/ac_remote_test/orange-pi
+EnvironmentFile=-/etc/default/ac-remote
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/orangepi/ac_remote_test/.venv/bin/python /home/orangepi/ac_remote_test/orange-pi/qq_bot.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+

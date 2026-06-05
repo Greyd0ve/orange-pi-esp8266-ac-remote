@@ -1,0 +1,14 @@
+[Unit]
+Description=Orange Pi AC Remote Wi-Fi Hotspot
+After=network-pre.target NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/default/ac-remote-hotspot
+ExecStart=/usr/local/bin/start-ac-hotspot.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+

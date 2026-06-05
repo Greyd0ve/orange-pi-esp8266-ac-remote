@@ -1,0 +1,56 @@
+{
+  "orange_pi": {
+    "project_dir": "/home/orangepi/ac_remote_test",
+    "state_file": "/home/orangepi/ac_remote_test/orange-pi/ac_state.json",
+    "app_host": "0.0.0.0",
+    "app_port": 8081,
+    "qq_bot_host": "0.0.0.0",
+    "qq_bot_port": 8091,
+    "app_base_url": "http://127.0.0.1:8081"
+  },
+  "napcat": {
+    "base_url": "http://<WINDOWS_HOST>:<NAPCAT_HTTP_PORT>",
+    "access_token": "<NAPCAT_TOKEN>",
+    "post_secret": "<ONEBOT_POST_SECRET>",
+    "self_id": "<BOT_QQ>"
+  },
+  "esp8266": {
+    "base_url": "http://<ESP8266_IP>",
+    "timeout_seconds": 5,
+    "default_command": "cool_26"
+  },
+  "access_control": {
+    "allow_all_private": false,
+    "allow_all_groups": false,
+    "private_user_whitelist": [
+      "<ADMIN_QQ>"
+    ],
+    "group_whitelist": [
+      "<GROUP_QQ>"
+    ]
+  },
+  "air_conditioner": {
+    "default_power": "off",
+    "default_mode": "cool",
+    "default_temp": 26,
+    "default_fan": "mid",
+    "min_temp": 17,
+    "max_temp": 30
+  },
+  "hotspot": {
+    "iface": "ap0",
+    "phy_iface": "wlan0",
+    "ssid": "AC_Remote_AP",
+    "password": "<HOTSPOT_PASSWORD>",
+    "cidr": "192.168.10.1/24",
+    "dhcp_range_start": "192.168.10.50",
+    "dhcp_range_end": "192.168.10.150"
+  },
+  "electricity": {
+    "enabled": false,
+    "api_url": "<CAMPUS_ELECTRICITY_API_URL>",
+    "account": "<CAMPUS_ACCOUNT>",
+    "password": "<CAMPUS_PASSWORD>"
+  }
+}
+

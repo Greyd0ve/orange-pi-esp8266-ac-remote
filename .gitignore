@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+config.json
+orange-pi/config.json
+orange-pi/ac_state.json
+ac_state.json
+*.secret
+*.secrets
+*.token
+token*.txt
+credentials*.json
+*.pem
+*.key
+*.crt
+
+# Logs and runtime files
+*.log
+logs/
+run/
+tmp/
+*.pid
+
+# Arduino / ESP8266 build outputs
+*.bin
+*.elf
+*.hex
+*.map
+*.eep
+*.lst
+*.sym
+*.d
+*.o
+build/
+cmake-build-*/
+.pio/
+.vscode/c_cpp_properties.json
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Windows / macOS / Linux metadata
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*
+
