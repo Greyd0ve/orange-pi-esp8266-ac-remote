@@ -17,8 +17,13 @@ curl -fsS "$ESP8266_BASE_URL/api/state"
 
 echo
 echo
-echo "GET /api/send?cmd=cool_26"
-curl -fsS "$ESP8266_BASE_URL/api/send?cmd=cool_26"
+echo "GET /api/ac?power=on&mode=cool&temp=26&fan=high"
+curl -fsS "$ESP8266_BASE_URL/api/ac?power=on&mode=cool&temp=26&fan=high"
+
+echo
+echo
+echo "GET /api/ac?power=off"
+curl -fsS "$ESP8266_BASE_URL/api/ac?power=off"
 
 echo
 

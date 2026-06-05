@@ -18,7 +18,7 @@ sequenceDiagram
     B->>A: GET /api/send 或 /api/ac
     A->>A: 更新 ac_state.json
     A->>E: GET /api/send?cmd=cool_26
-    E->>I: IRsend.sendRaw(..., 38kHz)
+    E->>I: IRCoolixAC.send(), 38kHz
     I->>C: 红外信号
     B->>N: send_msg
     N->>U: 执行结果
@@ -51,7 +51,7 @@ ESP8266：
 
 - 连接 Orange Pi 热点 `AC_Remote_AP`。
 - 暴露 `/ping`、`/api/state`、`/api/send`、`/api/ac`。
-- 使用 `IRremoteESP8266` 以 38kHz 发送 raw 红外数据。
+- 使用 `IRremoteESP8266` 的 `IRCoolixAC` 以 38kHz 发送 COOLIX 协议。
 
 ## 端口
 

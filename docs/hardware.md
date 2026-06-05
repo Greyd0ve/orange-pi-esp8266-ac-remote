@@ -1,61 +1,52 @@
 # Hardware
 
-## 硬件
+## Parts
 
 - Orange Pi 4 Pro
 - ESP8266 / NodeMCU
-- 三针大功率红外发射模块：IN / 5V / GND
-- 5V 电源
-- 美的空调
+- High-power 3-pin IR transmitter module: IN / 5V / GND
+- 5V power supply
+- Midea air conditioner
 
 ## Orange Pi
 
-- 系统：Orange Pi 1.0.6 Jammy
-- 内核：Linux 5.15.147-sun60iw2
-- 用户名：`orangepi`
-- 项目目录：`/home/orangepi/ac_remote_test/`
-- 热点接口：`ap0`
-- 热点名称：`AC_Remote_AP`
-- 热点 IP：`192.168.10.1/24`
+- OS: Orange Pi 1.0.6 Jammy
+- Kernel: Linux 5.15.147-sun60iw2
+- User: `orangepi`
+- Project directory: `/home/orangepi/ac_remote_test/`
+- Hotspot interface: `ap0`
+- Hotspot SSID: `AC_Remote_AP`
+- Hotspot IP: `192.168.10.1/24`
 
-热点密码请只写在本地 `/etc/default/ac-remote-hotspot` 或未提交的 `config.json` 中。
+Keep the hotspot password only in local files such as `/etc/default/ac-remote-hotspot` or an untracked `config.json`.
 
-## ESP8266 与红外模块接线
+## ESP8266 And IR Module Wiring
 
-必须按下面方式连接：
-
-```text
-ESP8266 D2 / GPIO4 -> 红外模块 IN
-ESP8266 5V         -> 红外模块 5V
-ESP8266 GND        -> 红外模块 GND
-```
-
-如果使用外部 5V 电源：
+Use this wiring:
 
 ```text
-外部电源 5V  -> 红外模块 5V
-外部电源 GND -> 红外模块 GND
-ESP8266 GND  -> 外部电源 GND
-ESP8266 D2   -> 红外模块 IN
+ESP8266 D2 / GPIO4 -> IR module IN
+ESP8266 5V         -> IR module 5V
+ESP8266 GND        -> IR module GND
 ```
 
-外部电源 GND、ESP8266 GND、红外模块 GND 必须共地。
+If the IR module uses an external 5V power supply:
 
-## 红外参数
-
-- ESP8266 引脚：NodeMCU D2 = GPIO4
-- 红外载波频率：38kHz
-- 默认重复次数：`SEND_REPEAT_COUNT = 1`
-- 固件主文件：`esp8266_ir_gateway_v2.ino`
-- Raw 数据头文件：`ac_raw_data.h`
-
-当前固件保留这些补偿参数：
-
-```cpp
-const uint16_t MARK_SHORT_COMP_US = 200;
-const uint16_t SPACE_SHORT_COMP_US = 210;
-const uint16_t SPACE_LONG_COMP_US = 200;
-const uint16_t HEADER_SPACE_COMP_US = 200;
-const uint16_t FRAME_GAP_SPACE_COMP_US = 100;
+```text
+External 5V  -> IR module 5V
+External GND -> IR module GND
+ESP8266 GND  -> External GND
+ESP8266 D2   -> IR module IN
 ```
 
+External power GND, ESP8266 GND, and IR module GND must be connected together.
+
+## IR Parameters
+
+- ESP8266 pin: NodeMCU D2 = GPIO4
+- Carrier: 38kHz
+- Protocol: COOLIX
+- Firmware: `esp8266_ir_gateway_v2.ino`
+- IR library class: `IRCoolixAC`
+
+The firmware no longer uses raw timing arrays or `ac_raw_data.h` for normal A/C control.

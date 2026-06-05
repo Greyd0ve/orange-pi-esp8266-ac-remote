@@ -36,8 +36,7 @@ orange-pi-esp8266-ac-remote/
 │       └── ac-hotspot.service
 ├── esp8266/
 │   └── esp8266_ir_gateway_v2/
-│       ├── esp8266_ir_gateway_v2.ino
-│       └── ac_raw_data.h
+│       └── esp8266_ir_gateway_v2.ino
 ├── scripts/
 │   ├── start-ac-hotspot.sh
 │   ├── install-orange-pi-services.sh
@@ -54,7 +53,7 @@ flowchart LR
     NapCat -- "HTTP POST :8091" --> QQBot["Orange Pi<br/>qq_bot.py"]
     QQBot -- "HTTP :8081" --> App["Orange Pi<br/>app.py"]
     App -- "HTTP GET" --> ESP["ESP8266<br/>IR Gateway"]
-    ESP -- "38kHz Raw IR" --> IR["大功率红外发射模块"]
+    ESP -- "38kHz COOLIX IR" --> IR["大功率红外发射模块"]
     IR --> AC["美的空调"]
 ```
 
@@ -64,7 +63,7 @@ flowchart LR
 - Orange Pi 1.0.6 Jammy，Linux 5.15.147-sun60iw2
 - ESP8266 / NodeMCU
 - 三针大功率红外发射模块：IN / 5V / GND
-- 美的空调遥控器，用于采集 raw 红外数据
+- 美的空调遥控器，用于确认 COOLIX 协议与按键行为
 - 可选外部 5V 电源
 
 接线：
@@ -149,7 +148,7 @@ curl http://127.0.0.1:8081/api/state
 curl "http://127.0.0.1:8081/api/send?cmd=power_on"
 curl "http://127.0.0.1:8081/api/send?cmd=power_off"
 curl "http://127.0.0.1:8081/api/send?cmd=cool_26"
-curl "http://127.0.0.1:8081/api/ac?power=on&mode=cool&temp=26"
+curl "http://127.0.0.1:8081/api/ac?power=on&mode=cool&temp=26&fan=high"
 ```
 
 ## ESP8266 API
@@ -159,11 +158,11 @@ ESP8266 默认提供：
 ```text
 GET /ping
 GET /api/state
-GET /api/send?cmd=cool_26
-GET /api/ac?power=on&mode=cool&temp=26
+GET /api/ac?power=on&mode=cool&temp=26&fan=high
+GET /api/ac?power=off
 ```
 
-当前固件支持的 raw 命令名：
+当前 ESP8266 固件使用 IRremoteESP8266 的 `IRCoolixAC` 状态接口发送 COOLIX 协议，不再维护 raw 数组。为兼容 Orange Pi 现有调用，仍保留旧的 `/api/send?cmd=...` 映射层：
 
 - `power_on`
 - `power_off`
@@ -175,6 +174,13 @@ GET /api/ac?power=on&mode=cool&temp=26
 - `fan_mid`
 - `fan_high`
 
+推荐新接口：
+
+```bash
+curl "http://<ESP8266_IP>/api/ac?power=on&mode=cool&temp=26&fan=high"
+curl "http://<ESP8266_IP>/api/ac?power=off"
+```
+
 ## QQ 命令
 
 私聊机器人，或在群聊中 @机器人 后发送：
@@ -184,7 +190,7 @@ GET /api/ac?power=on&mode=cool&temp=26
 | 空调开 | 发送 `power_on` |
 | 空调关 | 发送 `power_off` |
 | 制冷 | 按默认温度进入制冷 |
-| 制热 | 保留入口，需要补充制热 raw 数据 |
+| 制热 | 使用 COOLIX heat 模式 |
 | 送风 | 发送 `fan_mid` |
 | 升温 | 本地状态温度 +1 后调用 `/api/ac` |
 | 降温 | 本地状态温度 -1 后调用 `/api/ac` |
@@ -220,7 +226,7 @@ journalctl -u qq-bot.service -f
 
 1. 先让 ESP8266 连上 Orange Pi 热点，在串口监视器确认 IP。
 2. 在 Orange Pi 上执行 `curl http://<ESP8266_IP>/ping`。
-3. 执行 `curl "http://<ESP8266_IP>/api/send?cmd=cool_26"`，确认红外模块有闪光。
+3. 执行 `curl "http://<ESP8266_IP>/api/ac?power=on&mode=cool&temp=26&fan=high"`，确认红外模块有闪光。
 4. 执行 `curl "http://127.0.0.1:8081/api/send?cmd=cool_26"`，确认 Orange Pi 控制服务可转发。
 5. 在 NapCat 中确认 OneBot11 HTTP 上报地址是 `http://<ORANGE_PI_IP>:8091/`。
 6. 最后用 QQ 私聊或群聊 @机器人 测试。

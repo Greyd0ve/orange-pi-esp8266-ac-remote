@@ -1,82 +1,104 @@
 # ESP8266 Firmware
 
-固件目录：
+Firmware directory:
 
 ```text
 esp8266/esp8266_ir_gateway_v2/
-├── esp8266_ir_gateway_v2.ino
-└── ac_raw_data.h
+└── esp8266_ir_gateway_v2.ino
 ```
 
-Arduino 工程目录名必须和 `.ino` 主文件名一致。
+The Arduino project directory name must match the `.ino` filename.
 
-## 开发环境
+## Development Environment
 
-- Arduino IDE
+- Arduino IDE or PlatformIO
 - ESP8266 Board Core 3.1.2
-- IRremoteESP8266 2.9.0
-- 开发板选择：NodeMCU 1.0 或与你的 ESP8266 板子匹配的型号
+- IRremoteESP8266 2.9.0 or later
+- Board: NodeMCU 1.0 or the matching ESP8266 board profile
 
-## 安装库
+## Protocol
 
-Arduino IDE 中打开：
+The captured Midea remote frames match the `COOLIX` protocol:
 
-```text
-工具 -> 管理库 -> 搜索 IRremoteESP8266 -> 安装 2.9.0
+- Carrier: 38kHz
+- 24-bit effective data
+- Each byte is followed by its inverse byte, for example `B2 4D 3F C0 D0 2F`
+- Effective frame example: `0xB23FD0`
+
+The firmware uses the stateful `IRCoolixAC` API:
+
+```cpp
+#include <ir_Coolix.h>
+
+const uint16_t kIrLed = 4;  // NodeMCU D2 = GPIO4
+IRCoolixAC ac(kIrLed);
 ```
 
-如果提示找不到 `IRremoteESP8266.h`，通常是库没有装到 Arduino 的 `libraries` 目录，见 `troubleshooting.md`。
+It no longer includes `ac_raw_data.h`, no longer calls `sendRaw()`, and does not maintain `raw_cool_26[]` style timing arrays.
 
-## 配置 Wi-Fi
+## Wi-Fi Configuration
 
-在 `esp8266_ir_gateway_v2.ino` 中修改：
+Edit these values locally before flashing:
 
 ```cpp
 const char* WIFI_SSID = "AC_Remote_AP";
-const char* WIFI_PASSWORD = "<HOTSPOT_PASSWORD>";
+const char* WIFI_PASSWORD = "<WIFI_PASSWORD>";
 ```
 
-不要把真实热点密码提交到公开仓库。
+Do not commit a real hotspot password.
 
-## 配置红外引脚
+## IR Pin
 
 ```cpp
-const uint16_t IR_LED_PIN = 4;
-const uint16_t IR_CARRIER_KHZ = 38;
+const uint16_t kIrLed = 4;
 ```
 
-NodeMCU D2 对应 GPIO4。
-
-## Raw 数据
-
-`ac_raw_data.h` 必须包含这些数组：
-
-```cpp
-raw_power_on
-raw_power_off
-raw_cool_23
-raw_cool_24
-raw_cool_25
-raw_cool_26
-raw_fan_low
-raw_fan_mid
-raw_fan_high
-```
-
-仓库里的数组是占位数据，只保证代码结构和编译路径清楚。真正控制空调前，请替换为你采集到的美的空调 raw 数据。
+NodeMCU D2 is GPIO4.
 
 ## HTTP API
 
-上传固件后，在串口监视器查看 ESP8266 IP，然后测试：
+After uploading the firmware, read the ESP8266 IP from the serial monitor and test:
 
 ```bash
 curl http://<ESP8266_IP>/ping
 curl http://<ESP8266_IP>/api/state
-curl "http://<ESP8266_IP>/api/send?cmd=cool_26"
-curl "http://<ESP8266_IP>/api/ac?power=on&mode=cool&temp=26"
+curl "http://<ESP8266_IP>/api/ac?power=on&mode=cool&temp=26&fan=high"
+curl "http://<ESP8266_IP>/api/ac?power=off"
 ```
 
-支持命令：
+`/api/ac` parameters:
+
+| Parameter | Values | Default |
+| --- | --- | --- |
+| `power` | `on`, `off` | unknown values become `on` |
+| `mode` | `cool`, `heat`, `dry`, `fan`, `auto` | unknown values become `cool` |
+| `temp` | `17` to `30` | missing values become `26`; out-of-range values are clamped |
+| `fan` | `low`, `mid`, `high`, `auto` | unknown values become `high` |
+
+Mode mapping:
+
+```cpp
+cool -> kCoolixCool
+heat -> kCoolixHeat
+dry  -> kCoolixDry
+fan  -> kCoolixFan
+auto -> kCoolixAuto
+```
+
+Fan mapping:
+
+```cpp
+low  -> kCoolixFanMin
+mid  -> kCoolixFanMed
+high -> kCoolixFanMax
+auto -> kCoolixFanAuto
+```
+
+## Legacy Compatibility
+
+The ESP8266 firmware still exposes `/api/send?cmd=...` so the existing Orange Pi Python services do not need to change immediately.
+
+Supported legacy commands:
 
 ```text
 power_on
@@ -90,17 +112,4 @@ fan_mid
 fan_high
 ```
 
-## 时序补偿
-
-固件中保留以下参数：
-
-```cpp
-const uint16_t MARK_SHORT_COMP_US = 200;
-const uint16_t SPACE_SHORT_COMP_US = 210;
-const uint16_t SPACE_LONG_COMP_US = 200;
-const uint16_t HEADER_SPACE_COMP_US = 200;
-const uint16_t FRAME_GAP_SPACE_COMP_US = 100;
-```
-
-如果空调不响应，但接收模块或手机摄像头能看到红外，重点检查 raw 数据、载波频率、发射角度、供电电流和这些补偿参数。
-
+These commands are translated to `IRCoolixAC` state changes internally.

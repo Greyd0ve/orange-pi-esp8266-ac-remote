@@ -1,12 +1,8 @@
 # Troubleshooting
 
-## ESP8266 无法连接热点
+## ESP8266 Cannot Connect To The Hotspot
 
-检查顺序：
-
-1. ESP8266 只支持 2.4GHz Wi-Fi，确认 Orange Pi 热点是 2.4GHz。
-2. 确认 `WIFI_SSID` 和 `WIFI_PASSWORD` 与 `/etc/default/ac-remote-hotspot` 一致。
-3. 查看热点服务日志：
+Check:
 
 ```bash
 journalctl -u ac-hotspot.service -f
@@ -15,12 +11,18 @@ nmcli device status
 ip addr show ap0
 ```
 
-4. 打开 Arduino 串口监视器，波特率 `115200`，看是否卡在 `Connecting to Wi-Fi`。
-5. 如果 `ap0` 不存在，确认物理无线接口名是不是 `wlan0`，必要时修改 `AP_PHY_IFACE`。
+Common causes:
 
-## Orange Pi 无法 curl ESP8266
+- ESP8266 only supports 2.4GHz Wi-Fi.
+- `WIFI_SSID` or `WIFI_PASSWORD` in the firmware does not match the Orange Pi hotspot settings.
+- `ap0` was not created. Check whether the physical wireless interface is really `wlan0`.
+- The hotspot password is still a placeholder.
 
-检查：
+Use the Arduino serial monitor at `115200` baud to see whether the board is stuck at `Connecting to Wi-Fi`.
+
+## Orange Pi Cannot curl ESP8266
+
+Check:
 
 ```bash
 ip addr show ap0
@@ -28,114 +30,97 @@ ping <ESP8266_IP>
 curl -v http://<ESP8266_IP>/ping
 ```
 
-常见原因：
+Common causes:
 
-- ESP8266 实际 IP 和 `config.json` 中的 `esp8266.base_url` 不一致。
-- ESP8266 没有成功启动 HTTP server。
-- Orange Pi 热点没有给 ESP8266 分配到 `192.168.10.x` 地址。
-- ESP8266 连接到了别的 Wi-Fi。
+- The ESP8266 IP differs from `esp8266.base_url` in `orange-pi/config.json`.
+- ESP8266 did not start the HTTP server.
+- ESP8266 connected to another Wi-Fi network.
+- Orange Pi hotspot did not assign a `192.168.10.x` address.
 
-建议从 ESP8266 串口监视器读取真实 IP。
+Read the real ESP8266 IP from the serial monitor.
 
-## 红外模块手机能看到闪光但空调不响
+## IR LED Flashes But The Air Conditioner Does Not Respond
 
-手机摄像头看到闪光只能证明红外 LED 有发光，不代表协议正确。
+Phone cameras can show that the IR LED emits light, but they cannot prove the protocol is correct.
 
-重点检查：
+Check:
 
-- `ac_raw_data.h` 是否是真实美的遥控器采集数据。
-- 红外载波是否为 38kHz。
-- 红外模块是否对准空调接收窗，距离是否太远。
-- 供电电流是否不足，大功率红外模块建议使用稳定 5V。
-- 使用外部 5V 时是否共地。
-- raw 数据是否被重复补偿，导致时序偏长。
+- The firmware includes `ir_Coolix.h` and uses `IRCoolixAC`.
+- The control URL is `/api/ac?power=on&mode=cool&temp=26&fan=high`.
+- The IR pin is still GPIO4 / NodeMCU D2.
+- The IR module points at the A/C receiver window.
+- The module has enough 5V current.
+- External 5V power, ESP8266 GND, and IR module GND are connected together.
+- Your A/C model actually accepts COOLIX-compatible frames.
 
-## 51 单片机能收到但空调不响应
+## 51 MCU Can Receive Frames But The A/C Does Not Respond
 
-很多 51 红外接收方案使用解调接收头，输出的是去掉 38kHz 载波后的数字波形。空调接收端需要的是带 38kHz 载波调制的红外光。
+Many 51 MCU capture setups use a demodulating IR receiver. That output removes the 38kHz carrier and shows only mark/space timing.
 
-可能原因：
+For this project, the important conclusion from the capture is the 24-bit COOLIX payload pattern:
 
-- 51 能看到波形，但 ESP8266 发射的载波频率或占空比不对。
-- raw 时序和原遥控器差异太大。
-- 采集数据来自解调模块，mark / space 需要重新校准。
-- 空调协议可能是完整状态帧，不是简单按键码。
-
-建议用逻辑分析仪同时对比原遥控器和 ESP8266 发射的解调输出。
-
-## 红外时序偏短或偏长
-
-如果空调不响应，但接收端能看到完整帧，可以调这些参数：
-
-```cpp
-MARK_SHORT_COMP_US
-SPACE_SHORT_COMP_US
-SPACE_LONG_COMP_US
-HEADER_SPACE_COMP_US
-FRAME_GAP_SPACE_COMP_US
+```text
+B2 4D 3F C0 D0 2F
 ```
 
-建议：
+Each byte is followed by its inverse byte, so the effective 24-bit value is:
 
-- 每次只改一个方向，小步调整。
-- 先把补偿全部设为 `0`，确认 raw 数据本身是否可靠。
-- 对比原遥控器和 ESP8266 的 header mark、header space、bit mark、0/1 space、frame gap。
-- 不要只凭手机摄像头判断时序。
+```text
+0xB23FD0
+```
 
-## Arduino 找不到 IRremoteESP8266.h
+The ESP8266 firmware now lets IRremoteESP8266 generate COOLIX timing and the 38kHz carrier instead of replaying captured raw arrays.
 
-解决方法：
+## Timing Looks Short Or Long
 
-1. Arduino IDE 打开库管理器。
-2. 搜索 `IRremoteESP8266`。
-3. 安装版本 `2.9.0`。
-4. 关闭并重新打开 Arduino IDE。
+The current firmware does not use manual raw timing compensation. If timing looks wrong:
 
-如果仍然找不到，检查库是否在：
+- Confirm the installed IRremoteESP8266 version supports `IRCoolixAC`.
+- Confirm the board profile is ESP8266 / NodeMCU and the CPU clock is normal.
+- Compare emitted frames with a demodulating receiver if needed.
+- Avoid reintroducing `sendRaw()` compensation unless COOLIX support is proven incompatible with your exact A/C.
+
+## Arduino Cannot Find IRremoteESP8266.h Or ir_Coolix.h
+
+Install the library:
+
+1. Open Arduino IDE Library Manager.
+2. Search `IRremoteESP8266`.
+3. Install version `2.9.0` or later.
+4. Restart Arduino IDE.
+
+The library should live under:
 
 ```text
 Documents/Arduino/libraries/IRremoteESP8266/
 ```
 
-不要把库文件夹放进本项目的 `esp8266_ir_gateway_v2` 工程目录。
+Do not copy the library source into this repository.
 
-## Arduino 库目录和工程目录混乱
+## Arduino Library Directory And Project Directory Are Mixed Up
 
-正确结构：
+Correct structure:
 
 ```text
 Arduino/
 ├── libraries/
 │   └── IRremoteESP8266/
 └── esp8266_ir_gateway_v2/
-    ├── esp8266_ir_gateway_v2.ino
-    └── ac_raw_data.h
+    └── esp8266_ir_gateway_v2.ino
 ```
 
-本仓库中的结构：
+Repository structure:
 
 ```text
 esp8266/
 └── esp8266_ir_gateway_v2/
-    ├── esp8266_ir_gateway_v2.ino
-    └── ac_raw_data.h
+    └── esp8266_ir_gateway_v2.ino
 ```
 
-打开 Arduino 工程时，选择 `esp8266_ir_gateway_v2.ino`。如果 Arduino IDE 提示移动文件，确认移动后的目录仍叫 `esp8266_ir_gateway_v2`。
+Open `esp8266_ir_gateway_v2.ino` directly. If Arduino IDE asks to move it, make sure the final folder name remains `esp8266_ir_gateway_v2`.
 
-## SEND_REPEAT_COUNT 取 1 或 2 的区别
+## Repeats
 
-`SEND_REPEAT_COUNT = 1`：
+`IRCoolixAC::send()` uses the protocol's default repeat behavior from IRremoteESP8266. The firmware no longer exposes `SEND_REPEAT_COUNT`.
 
-- 更接近原始单次按键。
-- 对电源这类可能带切换语义的命令更安全。
-- 推荐作为初始值。
-
-`SEND_REPEAT_COUNT = 2`：
-
-- 可能提升远距离或弱供电时的成功率。
-- 如果命令是完整状态帧，通常问题不大。
-- 如果某个命令被空调理解为切换动作，重复两次可能产生意外结果。
-
-建议先用 `1` 调通，确认每个 raw 命令都是完整状态帧后，再尝试 `2`。
-
+If a command is unreliable, first check power, aiming, and protocol compatibility before changing library repeat behavior.
